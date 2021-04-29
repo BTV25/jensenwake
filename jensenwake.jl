@@ -1,5 +1,6 @@
 using Test
 
+# calculate f(theta) for Jensen Wake Model
 function f(theta)
     if theta > 20
         return 0
@@ -8,6 +9,7 @@ function f(theta)
     end
 end
 
+# calculate velocity of wind behind a turbine given ambient velocity u and the off axis angle theta
 function v(u,theta)
     return u*(1-2/3*(f(theta))^2)
 end
