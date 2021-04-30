@@ -12,7 +12,7 @@ function f(theta)
 end
 
 # calculate velocity of wind behind a turbine given ambient velocity u and the off axis angle theta
-function vcosine(u,theta,r0,x)
+function vcosine(u,theta,r0,x,alpha)
     return u*(1-2/3*(r0/(r0+alpha*x))^2*f(theta))
 end
 
@@ -38,7 +38,7 @@ function generatePlots(ratio,legend,xlabel)
         else
             v1[i] = u
         end
-        v2[i] = vcosine(u,theta[i],r0,x) 
+        v2[i] = vcosine(u,theta[i],r0,x,alpha) 
     end
 
     # Check to add legend
@@ -70,6 +70,7 @@ p1 = generatePlots(16,true,false)
 p2 = generatePlots(10,false,false)
 p3 = generatePlots(6,false,true)
 
-
 plot(p1,p2,p3,layout = (3,1))
 plot!(size = (400,500))
+
+savefig("jensen1983.pdf")
