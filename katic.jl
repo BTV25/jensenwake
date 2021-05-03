@@ -22,7 +22,7 @@ function determineIfTurbinesAreInWakes(turbines,k,D,n)
         for j = 1:n # is this turbine in the wake?
             if i == j # turbine cant be in its own wake
                 continue
-            elseif turbines[1,i] > turbines[1,j] #if turbine is in front in cant be in wake of those behind it
+            elseif turbines[1,i] >= turbines[1,j] #if turbine is in front in cant be in wake of those behind it
                 continue
             else # turbine j is behind turbine i
                 range = D+k*(turbines[1,j] - turbines[1,i])
@@ -60,6 +60,17 @@ function calculateTotalDeficitAtEachTurbine(turbines,inWake,Ct,k,D,n)
     return deficit
 end
 
+# Deficit is calculated as if wind comes from the east, this function is help account for wind from 
+# other directions by rotating the cordinate frame so the negative x is pointing into the wind
+function rotateWind(theta,turbines,n)
+    R = [cosd(theta) sind(theta) 0; -sind(theta) cosd(theta) 0; 0 0 1]
+    temp = zeros(3,n)
+    for i = 1:n
+        temp[:,i] = R*[turbines[:,i];0]
+    end
+    return temp[1:2,:]
+end
+
 # test
 @test round(wakeDeficit(0.4,0.1,40,20),digits=3) == 0.115
 @test round(wakeDeficit(1,0.1,40,20),digits=4) == 0.5102
@@ -68,25 +79,31 @@ end
 # treat each turbine as a point and wind will only come from one direction 
 # n is number of turbines, xMax and yMax define the area
 n = 4
-xMax = 50
-yMax = 10
-turbines = zeros(Float32,2,n)
+xMax = 20
+yMax = 20
+turbines = zeros(Float64,2,n)
 
 # set turbines in a line parallel to the x axis
 for i = 1:n
     turbines[1,i] = xMax/n*i
     turbines[2,i] = yMax/2
 end
+originalTurbines = turbines
 
 k = 0.1
 D = 1
 Ct = 0.2
+theta = 0;
 
-inWake = determineIfTurbinesAreInWakes(turbines,k,D,n)
-@test inWake == [0.0 1.0 1.0 1.0; 0.0 0.0 1.0 1.0; 0.0 0.0 0.0 1.0; 0.0 0.0 0.0 0.0]
+# rotate into wind to allow for deficit calculation (default wind comes from the west)
+turbines = rotateWind(theta,turbines,n)
 
-turbines[1,1] = -10
 inWake = determineIfTurbinesAreInWakes(turbines,k,D,n)
 deficit = calculateTotalDeficitAtEachTurbine(turbines,inWake,Ct,k,D,n)
+
+# rotate away from wind to get positions 
+turbines = rotateWind(-theta,turbines,n)
+@test turbines == originalTurbines
+
 println(deficit)
-sum(deficit)
+println(sum(deficit))
