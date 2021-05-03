@@ -61,8 +61,7 @@ end
 # testing functions
 @test f(21) == 0
 @test f(0) == 1
-# @test vcosine(6,0) == 2
-# @test vcosine(6,20) == 6
+@test vcosine(6,20,8.1,40,0.1) == 6
 @test vtophat(8.1,20,0.1,40) == 4.35
 @test vtophat(8.1,20,0.1,100) == 5.7
 
