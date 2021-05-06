@@ -1,20 +1,4 @@
-# Wind direction from north is 0 degrees
-# Wind direction from east is 90 degrees
-
-# Each turbine has a diameter, x coordinate, and y coordinate
-# Each column in the array turbines is a turbine
-# Row 1 is the x coordinate
-# Row 2 is the y coordinate
-# Row 3 is the diameter of the turbine
-# k and Ct are treated as constants across all turbines
-# All heights are assumed to be the same
-
-# For this model, derived from Katic 1986 "A simple model for cluster efficiency"
-# each turbine is treated as a disk and therefore can be affected by partial wakes
-# meaning a turbine can experience Wake A on part of it's surface and by Wake B on
-# a different part of its surface and by both the wakes on the rest of its surface
-
-# Turbines are assumed to spin to face the wind
+using Snopt
 
 ###################################################################################
 # Functions
@@ -216,38 +200,61 @@ function calculateFarmDeficit(turbines,Ct,k,n)
     end
     return deficit
 end
-###################################################################################
-# Coordinate area BOX (mins are zero)
-xMax = 10
-yMax = 10
 
-# Create turbines
-n = 6 #number of turbines
-turbines = zeros(3,n)
-for i = 1:n
-    # Set the turbines in a straight line along the center of the space provided with 
-    # equal diameter
-    turbines[1,i] = xMax/(n-1)*(i-1)
-    turbines[2,i] = yMax/2
-    turbines[3,i] = 5
+#############################################################################
+
+function farm(g, df, dg, x, deriv)
+    turbines = zeros(3,convert(Int32,length(x)/2))
+    for i = 1:size(turbines,2)
+        # Set the turbines in a straight line along the center of the space provided with 
+        # equal diameter
+        turbines[1,i] = x[(i*2)-1]
+        turbines[2,i] = x[(i*2)]
+        turbines[3,i] = 5
+    end
+
+    # Set constants
+    k = 0.1 #determines the angle at which the wake expands at
+    Ct = 0.9 #thrust coefficient of the turbine
+
+    # Declare wind direction from North is 0, from East is 90
+    windDirection = 90
+
+    # Rotate the frame
+    turbines = rotateFrame(windDirection,turbines,n)
+
+    # Calculate the deficit
+    farmDeficit = calculateFarmDeficit(turbines,Ct,k,n)
+    fail = false
+
+    # Reset the frames
+    turbines = resetTurbineFrame(windDirection,turbines,n)
+    # reset wake frame
+
+    return farmDeficit, fail
 end
 
-# Set constants
-k = 0.1 #determines the angle at which the wake expands at
-Ct = 0.9 #thrust coefficient of the turbine
+# Create turbines
+xMax = 10
+yMax = 10
+n = 6 #number of turbines
+turbines = zeros(2,n)
+x0 = Array{Float64}(undef,n*2)
+for i = 1:n
+    turbines[1,i] = xMax/(n-1)*(i-1)
+    turbines[2,i] = yMax/2
 
-# Declare wind direction from North is 0, from East is 90
-windDirection = 90
+    x0[i*2-1] = turbines[1,i]
+    x0[i*2] = turbines[2,i]
+end
+lx = zeros(length(x0))
+ux = zeros(length(x0)) .+ 10
+lg = []
+ug = []
+rows = []
+cols = []
 
-# Rotate the frame
-turbines = rotateFrame(windDirection,turbines,n)
+xopt, fopt, info, out = snopta(farm, x0, lx, ux, lg, ug, rows, cols)
 
-# Calculate the deficit
-farmDeficit = calculateFarmDeficit(turbines,Ct,k,n)
-println(farmDeficit)
-
-# Plot wakes?
-
-# Reset the frames
-turbines = resetTurbineFrame(windDirection,turbines,n)
-# reset wake frame
+println(xopt)
+println(fopt)
