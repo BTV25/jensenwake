@@ -1,4 +1,5 @@
 using Snopt
+using Plots
 
 ###################################################################################
 # Functions
@@ -205,12 +206,13 @@ end
 
 function farm(g, df, dg, x, deriv)
     turbines = zeros(3,convert(Int32,length(x)/2))
+    diameter = 1
     for i = 1:size(turbines,2)
         # Set the turbines in a straight line along the center of the space provided with 
         # equal diameter
         turbines[1,i] = x[(i*2)-1]
         turbines[2,i] = x[(i*2)]
-        turbines[3,i] = 5
+        turbines[3,i] = diameter
     end
 
     # Set constants
@@ -235,20 +237,22 @@ function farm(g, df, dg, x, deriv)
 end
 
 # Create turbines
-xMax = 10
-yMax = 10
+maxBox = 20
+xMax = maxBox
+yMax = maxBox
+diameter = 1
 n = 6 #number of turbines
 turbines = zeros(2,n)
 x0 = Array{Float64}(undef,n*2)
 for i = 1:n
     turbines[1,i] = xMax/(n-1)*(i-1)
-    turbines[2,i] = yMax/2
+    turbines[2,i] = yMax/(n-1)*(i-1)
 
     x0[i*2-1] = turbines[1,i]
     x0[i*2] = turbines[2,i]
 end
 lx = zeros(length(x0))
-ux = zeros(length(x0)) .+ 10
+ux = zeros(length(x0)) .+ maxBox
 lg = []
 ug = []
 rows = []
@@ -257,4 +261,46 @@ cols = []
 xopt, fopt, info, out = snopta(farm, x0, lx, ux, lg, ug, rows, cols)
 
 println(xopt)
-println(fopt)
+# println(fopt)
+
+newTurbines = zeros(3,convert(Int32,length(xopt)/2))
+for i = 1:size(newTurbines,2)
+    # Set the turbines in a straight line along the center of the space provided with 
+    # equal diameter
+    newTurbines[1,i] = xopt[(i*2)-1]
+    newTurbines[2,i] = xopt[(i*2)]
+    newTurbines[3,i] = diameter
+end
+
+windDirection = 90
+newTurbines = rotateFrame(windDirection,newTurbines,n)
+
+plots = zeros(n,4,3)
+wakeLength = 20
+k = 0.1
+R = [cosd(-windDirection) sind(-windDirection) 0; -sind(-windDirection) cosd(-windDirection) 0; 0 0 1]
+
+for i = 1:n # for each turbine
+    plots[i,1,1] = newTurbines[1,i] - .5*(newTurbines[3,i]/2 + 2*k*wakeLength) # left wake x
+    plots[i,1,2] = newTurbines[2,i] - wakeLength # left wake y
+    plots[i,2,1] = newTurbines[1,i] - newTurbines[3,i]/2 # left edge turbine x
+    plots[i,2,2] = newTurbines[2,i] # left edge turbine y
+    plots[i,3,1] = newTurbines[1,i] + newTurbines[3,i]/2 # right edge turbine x
+    plots[i,3,2] = newTurbines[2,i] # right edge turbine y
+    plots[i,4,1] = newTurbines[1,i] + .5*(newTurbines[3,i]/2 + 2*k*wakeLength) # right wake x
+    plots[i,4,2] = newTurbines[2,i] - wakeLength # right wake y
+
+    # rotate
+    for j = 1:4
+        plots[i,j,:] = R*plots[i,j,:]
+    end
+
+    if i == 1
+        plot(plots[i,:,1],plots[i,:,2],xlim=(-1,maxBox+1),ylim=(-1,maxBox+1),legend=false)
+    else
+        plot!(plots[i,:,1],plots[i,:,2])
+    end
+end
+
+
+savefig("optim.pdf")
