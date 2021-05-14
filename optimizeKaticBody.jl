@@ -1,5 +1,6 @@
 using Snopt
 using Plots
+using LatinHypercubeSampling
 
 ###################################################################################
 # Functions
@@ -174,12 +175,13 @@ function calculateDeficitOnSingleTurbine(turbines,Ct,k,numTurbine,n)
 
     active[convert(Int32,order[1,2])] = 1
     d1 = order[1,3]
-
+    totalArea = 0
     totalDeficit = 0
     def = transpose(wakes[3,:])
     for i = 2:size(order,1)
         d2 = order[i,3] # what is the distance of this point
         currentDeficit = wakeInteractionDeficit(def .* active)
+        totalArea += calculatePercentAreaOfTurbineSlice(d1,d2)
         totalDeficit += calculatePercentAreaOfTurbineSlice(d1,d2) * currentDeficit
 
         if order[i,1] == 1 # start of stop the wake
@@ -190,7 +192,8 @@ function calculateDeficitOnSingleTurbine(turbines,Ct,k,numTurbine,n)
         
         d1 = d2
     end
-
+# println(totalArea)
+# println(totalDeficit)
     return totalDeficit
 end
 
@@ -206,7 +209,7 @@ end
 
 function farm(g, df, dg, x, deriv)
     turbines = zeros(3,convert(Int32,length(x)/2))
-    diameter = 1
+    diameter = 0.5
     for i = 1:size(turbines,2)
         # Set the turbines in a straight line along the center of the space provided with 
         # equal diameter
@@ -216,15 +219,14 @@ function farm(g, df, dg, x, deriv)
     end
 
     # Set constants
-    k = 0.1 #determines the angle at which the wake expands at
+    k = 0.01 #determines the angle at which the wake expands at
     Ct = 0.9 #thrust coefficient of the turbine
 
     # Declare wind direction from North is 0, from East is 90
-    windDirection = 90
+    windDirection = 0
 
     # Rotate the frame
     turbines = rotateFrame(windDirection,turbines,n)
-
     # Calculate the deficit
     farmDeficit = calculateFarmDeficit(turbines,Ct,k,n)
     fail = false
@@ -237,47 +239,57 @@ function farm(g, df, dg, x, deriv)
 end
 
 # Create turbines
-maxBox = 20
-xMax = maxBox
-yMax = maxBox
-diameter = 1
-n = 6 #number of turbines
-turbines = zeros(2,n)
-x0 = Array{Float64}(undef,n*2)
-for i = 1:n
-    turbines[1,i] = xMax/(n-1)*(i-1)
-    turbines[2,i] = yMax/(n-1)*(i-1)
+maxBox = 10
+diameter = 0.5
+n = 10 #number of turbines
+x0 = []
+starts = 20
+plan = randomLHC(starts,n*2)
+plan = plan .- 1
+plan = plan .* maxBox/(starts-1)
+xFinal = 0
+obj = 0
+for i = 1:starts
+    global x0 = plan[i,:]
+    lx = zeros(length(x0))
+    ux = zeros(length(x0)) .+ maxBox
+    lg = []
+    ug = []
+    rows = []
+    cols = []
 
-    x0[i*2-1] = turbines[1,i]
-    x0[i*2] = turbines[2,i]
+    xopt, fopt, info, out = snopta(farm, x0, lx, ux, lg, ug, rows, cols)
+
+    if i == 1
+        global xFinal = xopt
+        global obj = fopt
+    else
+        if fopt < obj
+            global xFinal = xopt
+            global obj = fopt
+        end
+    end
+    println(i)
 end
-lx = zeros(length(x0))
-ux = zeros(length(x0)) .+ maxBox
-lg = []
-ug = []
-rows = []
-cols = []
 
-xopt, fopt, info, out = snopta(farm, x0, lx, ux, lg, ug, rows, cols)
+# println(xFinal)
+println(obj)
 
-println(xopt)
-# println(fopt)
-
-newTurbines = zeros(3,convert(Int32,length(xopt)/2))
+newTurbines = zeros(3,convert(Int32,length(xFinal)/2))
 for i = 1:size(newTurbines,2)
     # Set the turbines in a straight line along the center of the space provided with 
     # equal diameter
-    newTurbines[1,i] = xopt[(i*2)-1]
-    newTurbines[2,i] = xopt[(i*2)]
+    newTurbines[1,i] = xFinal[(i*2)-1]
+    newTurbines[2,i] = xFinal[(i*2)]
     newTurbines[3,i] = diameter
 end
 
-windDirection = 90
+windDirection = 0
 newTurbines = rotateFrame(windDirection,newTurbines,n)
 
 plots = zeros(n,4,3)
 wakeLength = 20
-k = 0.1
+k = 0.01
 R = [cosd(-windDirection) sind(-windDirection) 0; -sind(-windDirection) cosd(-windDirection) 0; 0 0 1]
 
 for i = 1:n # for each turbine
@@ -301,6 +313,5 @@ for i = 1:n # for each turbine
         plot!(plots[i,:,1],plots[i,:,2])
     end
 end
-
 
 savefig("optim.pdf")
