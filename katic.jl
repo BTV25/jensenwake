@@ -25,9 +25,9 @@ function determineIfTurbinesAreInWakes(turbines,k,D,n)
             elseif turbines[1,i] >= turbines[1,j] #if turbine is in front in cant be in wake of those behind it
                 continue
             else # turbine j is behind turbine i
-                range = D+k*(turbines[1,j] - turbines[1,i])
-                maxYWake = turbines[2,i] + range
-                minYWake = turbines[2,i] - range
+                ranges = D+k*(turbines[1,j] - turbines[1,i])
+                maxYWake = turbines[2,i] + ranges
+                minYWake = turbines[2,i] - ranges
 
                 if (turbines[2,j] < minYWake) || (turbines[2,j] > maxYWake)
                     continue

@@ -94,9 +94,9 @@ function calculateDeficitOnSingleTurbine(turbines,Ct,k,numTurbine,n)
             continue
         end
         # calculate wake range at the distance from the turbine i
-        range = turbines[3,i]+k*(abs(turbines[2,i] - turbines[2,numTurbine]))
-        rightWakeEdge = turbines[1,i] + range
-        leftWakeEdge = turbines[1,i] - range
+        ranges = turbines[3,i]+k*(abs(turbines[2,i] - turbines[2,numTurbine]))
+        rightWakeEdge = turbines[1,i] + ranges
+        leftWakeEdge = turbines[1,i] - ranges
         
         # if numTurbine falls in range determine which sections are affected 
         if (leftTurbineEdge >= rightWakeEdge) || (rightTurbineEdge <= leftWakeEdge)
