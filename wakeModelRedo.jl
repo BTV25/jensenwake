@@ -14,6 +14,11 @@ end
 # struct to hold turbine properties (diameter and power)
 struct turbine
     diameter::Float64
+    cutIn::Float64
+    cutOut::Float64
+    ratedSpeed::Float64
+    ratedPower::Float64
+    efficiency::Float64
 end
 
 # struct to hold wind properties
@@ -228,10 +233,34 @@ function power_for_state(turbine_x,turbine_y,turbine_properties,model_properties
 
     energy = sum(windSpeeds.^3)/length(xrot)
 
+    windSpeeds = windSpeeds .* wind_properties.speeds[num]
+
     # calculate power from deficits
     power = 0
+    for j = 1:length(deficits)
+        power += calculatePower(windSpeeds[j],wind_properties,turbine_properties)
+    end
 
     return power,energy
+end
+
+function calculatePower(wind_speed,wind_properties,turbine_properties)
+    cutIn = turbine_properties.cutIn
+    cutOut = turbine_properties.cutOut
+    ratedSpeed = turbine_properties.ratedSpeed
+    ratedPower = turbine_properties.ratedPower
+
+    if wind_speed < cutIn
+        power = 0.0
+    elseif wind_speed < ratedSpeed
+        power = ratedPower*((wind_speed-cutIn)/(ratedSpeed-cutIn))^3
+    elseif wind_speed < cutOut
+        power = ratedPower
+    elseif wind_speed > cutOut
+        power = 0.0
+    end
+
+    return power
 end
 
 # calculate wind farm total power
@@ -263,8 +292,14 @@ function buildFarm()
     speed = zeros(length(angle)) .+ 5 #m/s
     prob = zeros(length(angle)) .+ 1.0/length(angle) #probabilities that the wind will be that direction and at that speed
 
+    in = 4.0
+    out = 25.0
+    ratedSpeed = 16.0
+    ratedPower = 2.0E6
+    efficiency = 0.944
+
     # construct object of turbine properties (diameter and power properties)
-    turbine_properties = turbine(d)
+    turbine_properties = turbine(d,in,out,ratedSpeed,ratedPower,efficiency)
 
     # construct object of wake properties and constants
     model_properties = model(alpha)
