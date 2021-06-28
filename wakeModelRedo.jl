@@ -264,8 +264,8 @@ function calculatePower(wind_speed,wind_properties,turbine_properties)
 end
 
 # calculate wind farm total power
-function totalPower(turbine_x,turbine_y)
-    turbine_properties,model_properties,wind_properties = buildFarm()
+function totalPower(turbine_x,turbine_y,n)
+    turbine_properties,model_properties,wind_properties = buildFarm(n)
     power = 0
     energy = zeros(length(wind_properties.speeds))
     for i = 1:length(wind_properties.speeds)
@@ -283,7 +283,7 @@ function totalPower(turbine_x,turbine_y)
 end
 
 # set up farm beyond x and y coordinates (return wind, wake, and turbine parameters)
-function buildFarm()
+function buildFarm(n)
     alpha = 0.1 #jensen wake constant
     d = 10 #turbine diameter
     # global allAngles = collect(270:306) #wind direction measured in meteorolgoical coordinates
@@ -291,6 +291,15 @@ function buildFarm()
     angle = [288]
     speed = zeros(length(angle)) .+ 5 #m/s
     prob = zeros(length(angle)) .+ 1.0/length(angle) #probabilities that the wind will be that direction and at that speed
+
+
+    if n == 2
+        global allAngle = collect(0:50)
+        angle = collect(0:50)
+        speed = zeros(length(angle)) .+ 5 #m/s
+        prob = zeros(length(angle)) .+ 1.0/length(angle) #probabilities that the wind will be that direction and at that speed
+    end
+
 
     in = 4.0
     out = 25.0
@@ -345,6 +354,42 @@ function buildWakePlots(turbine_properties,model_properties,wind_properties,turb
     return plotPoints
 end
 
+function createKatic()
+    n = 37
+    turbine_x = zeros(n)
+    turbine_y = zeros(n)
+    D = 5.05*10
+    c = 0
+
+    for i = 1:n
+        if i >= 35 #row 7
+            c = i - 36
+            turbine_y[i] = -3*D
+        elseif i >= 30 #row 6
+            c = i - 32
+            turbine_y[i] = -2*D
+        elseif i >= 23 #row 5
+            c = i - 26
+            turbine_y[i] = -D
+        elseif i >= 16 #row 4
+            c = i - 19
+            turbine_y[i] = 0
+        elseif i >= 9 #row 3
+            c = i - 12
+            turbine_y[i] = D
+        elseif i >= 4 #row 2
+            c = i - 6
+            turbine_y[i] = 2*D
+        else #row 1
+            c = i - 2
+            turbine_y[i] = 3*D
+        end 
+        turbine_x[i] = c*D
+    end
+
+    return turbine_x,turbine_y
+end
+
 ############################################################################
 # CIRCULAR FORMATION
 n = 10 #number of turbines
@@ -363,7 +408,7 @@ end
 # turbine_x = [-50,0]
 # turbine_y = [0,0]
 
-power,energy,plots = totalPower(turbine_x,turbine_y)
+power,energy,plots = totalPower(turbine_x,turbine_y,1)
 
 # Plot
 if !isempty(plots)
@@ -378,3 +423,9 @@ if !isempty(plots)
 else
     plot(allAngles,energy,legend=false)
 end
+
+turbine_x,turbine_y = createKatic()
+
+power,energy,plots = totalPower(turbine_x,turbine_y,2)
+
+plot(allAngle,energy,legend=false)
