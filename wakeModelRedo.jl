@@ -1,5 +1,7 @@
 using Plots
 using Test
+using Snopt
+using LatinHypercubeSampling
 
 # This file is to redo the code from katicBody.jl to allow for a better code organization
 
@@ -288,7 +290,7 @@ function buildFarm(n)
     d = 10 #turbine diameter
     # global allAngles = collect(270:306) #wind direction measured in meteorolgoical coordinates
     # angle = allAngles
-    angle = [288]
+    angle = [270]
     speed = zeros(length(angle)) .+ 5 #m/s
     prob = zeros(length(angle)) .+ 1.0/length(angle) #probabilities that the wind will be that direction and at that speed
 
@@ -390,6 +392,16 @@ function createKatic()
     return turbine_x,turbine_y
 end
 
+function farms(g, df, dg, x, deriv)
+    n = trunc(Int,length(x)/2)
+    turbine_x_temp = x[1:n]
+    turbine_y_temp = x[n+1:end]
+    power_t,energy,plots = totalPower(turbine_x_temp,turbine_y_temp,1)
+    power_t = -1 * power_t
+    fail = false
+    return power_t, fail
+end
+
 ############################################################################
 # CIRCULAR FORMATION
 n = 10 #number of turbines
@@ -408,7 +420,10 @@ end
 # turbine_x = [-50,0]
 # turbine_y = [0,0]
 
-power,energy,plots = totalPower(turbine_x,turbine_y,1)
+power_cir,energy,plots = totalPower(turbine_x,turbine_y,1)
+
+turbine_x_cir = deepcopy(turbine_x)
+turbine_y_cir = deepcopy(turbine_y)
 
 # Plot
 if !isempty(plots)
@@ -429,3 +444,53 @@ turbine_x,turbine_y = createKatic()
 power,energy,plots = totalPower(turbine_x,turbine_y,2)
 
 plot(allAngle,energy,legend=false)
+
+
+# Optimize
+n = 10 #number of turbines
+starts = 30
+plan = randomLHC(starts,n*2)
+plan = plan .- 1
+plan = plan .* 303/(starts-1) .- 151.5
+xFinal = 0
+obj = 0
+
+for i = 1:starts
+    global x0 = plan[i,:]
+    lx = zeros(length(x0)) .- 151.5
+    ux = zeros(length(x0)) .+ 151.5
+    lg = []
+    ug = []
+    rows = []
+    cols = []
+
+    xopt, fopt, info, out = snopta(farms, x0, lx, ux, lg, ug, rows, cols)
+
+    if i == 1
+        global xFinal = xopt
+        global obj = fopt
+    else
+        if fopt < obj
+            global xFinal = xopt
+            global obj = fopt
+        end
+    end
+    # println(i)
+end
+
+n = trunc(Int,length(xFinal)/2)
+power,energy,plots = totalPower(xFinal[1:n],xFinal[n+1:end],1)
+
+# Plot
+if !isempty(plots)
+    p = plot(plots[1,:,1],plots[1,:,2],xlim=(-160,160),ylim=(-160,160),legend=false)
+    # p = plot(plots[1,:,1],plots[1,:,2],xlim=(-55,10),ylim=(-25,25),legend=false)
+
+    for i = 2:size(plots,1)
+        plot!(p,plots[i,:,1],plots[i,:,2])
+    end
+    display(p)
+    println(energy)
+else
+    plot(allAngles,energy,legend=false)
+end
