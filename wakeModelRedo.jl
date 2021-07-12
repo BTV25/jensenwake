@@ -297,7 +297,7 @@ function buildFarm(n)
 
     if n == 2
         global allAngle = collect(0:50)
-        angle = collect(0:50)
+        angle = collect(0:90)
         speed = zeros(length(angle)) .+ 5 #m/s
         prob = zeros(length(angle)) .+ 1.0/length(angle) #probabilities that the wind will be that direction and at that speed
     end
@@ -396,7 +396,7 @@ function farms(g, df, dg, x, deriv)
     n = trunc(Int,length(x)/2)
     turbine_x_temp = x[1:n]
     turbine_y_temp = x[n+1:end]
-    power_t,energy,plots = totalPower(turbine_x_temp,turbine_y_temp,1)
+    power_t,energy,plots = totalPower(turbine_x_temp,turbine_y_temp,2)
     power_t = -1 * power_t
     fail = false
     return power_t, fail
@@ -420,7 +420,7 @@ end
 # turbine_x = [-50,0]
 # turbine_y = [0,0]
 
-power_cir,energy,plots = totalPower(turbine_x,turbine_y,1)
+power_cir,energy,plots = totalPower(turbine_x,turbine_y,2)
 
 turbine_x_cir = deepcopy(turbine_x)
 turbine_y_cir = deepcopy(turbine_y)
@@ -436,7 +436,7 @@ if !isempty(plots)
     display(p)
     println(energy)
 else
-    plot(allAngles,energy,legend=false)
+    # plot(allAngles,energy,legend=false)
 end
 
 turbine_x,turbine_y = createKatic()
@@ -479,7 +479,7 @@ for i = 1:starts
 end
 
 n = trunc(Int,length(xFinal)/2)
-power,energy,plots = totalPower(xFinal[1:n],xFinal[n+1:end],1)
+power,energy,plots = totalPower(xFinal[1:n],xFinal[n+1:end],2)
 
 # Plot
 if !isempty(plots)
@@ -492,5 +492,7 @@ if !isempty(plots)
     display(p)
     println(energy)
 else
-    plot(allAngles,energy,legend=false)
+    # plot(allAngles,energy,legend=false)
 end
+
+scatter(xFinal[1:n],xFinal[n+1:end])
